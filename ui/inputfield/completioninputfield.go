@@ -11,15 +11,21 @@ type CompletionInputField struct {
 	*tview.InputField
 
 	toks            []utils.Token
-	tokNdx          int
 	posCompletes	[]int
+
 	previousText    string
 }
 
 func NewCompletionInputField() *CompletionInputField {
 	return &CompletionInputField{
-		InputField: tview.NewInputField(),
-		tokNdx:     -1}
+		InputField: tview.NewInputField()}
+}
+
+func (ci *CompletionInputField) tokNdx() int {
+	if len(ci.posCompletes) < 1 {
+		panic("posCompletes must always have 1 entry")
+	}
+	return len(ci.posCompletes) - 1
 }
 
 func (ci *CompletionInputField) cursorPos() int {
@@ -34,8 +40,8 @@ func (ci *CompletionInputField) cursorPos() int {
 }
 
 func (ci *CompletionInputField) posLastCompletion() int {
-	if ! ci.CompletionMode() || len(ci.posCompletes) == 0 {
-		return -1
+	if !ci.CompletionMode() {
+		panic("method called outside completion mode")
 	}
 	return ci.posCompletes[len(ci.posCompletes)-1]
 }
@@ -52,7 +58,6 @@ func (ci *CompletionInputField) EnterCompletionMode(cmd string) error {
 	if ci.CompletionMode() {
 		ci.exitCompletionMode()
 	}
-	ci.tokNdx = 0
 	toks, err := utils.ParseCmd(cmd)
 	if err != nil {
 		return err
@@ -61,7 +66,7 @@ func (ci *CompletionInputField) EnterCompletionMode(cmd string) error {
 	ci.previousText = ci.GetText()
 
 	ci.SetText("")
-	ci.posCompletes = make([]int, 0)
+	ci.posCompletes = []int{0}
 	ci.complete()
 	return nil
 }
@@ -69,15 +74,10 @@ func (ci *CompletionInputField) EnterCompletionMode(cmd string) error {
 func (ci *CompletionInputField) exitCompletionMode() {
 	ci.SetText(ci.previousText)
 	ci.toks = nil
-	ci.tokNdx = -1
 	ci.posCompletes = nil
 
 	ci.SetText(ci.previousText)
 	ci.previousText = ""
-}
-
-func (ci *CompletionInputField) completionEnd() bool {
-	return ci.tokNdx == -1
 }
 
 func (ci *CompletionInputField) cursorAtLineEnd() bool {
@@ -85,35 +85,41 @@ func (ci *CompletionInputField) cursorAtLineEnd() bool {
 }
 
 func (ci *CompletionInputField) deleteLastCompletion() {
+	if !ci.CompletionMode() {
+		panic("method called outside completion mode")
+	}
 	// remove last completion and everything following it.
 	switch len(ci.posCompletes) {
 	case 0:
-		return
+		panic("posCompletes should NEVER be empty, starts as []int{0}")
 	case 1:
-		ci.posCompletes = make([]int, 0)
-		ci.tokNdx = 0
-		ci.SetText("")
-		ci.exitCompletionMode()
+		panic("should not be called when having no completions to delete")
 	default:
 		ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
-		ci.tokNdx -= 1
 		endPos := ci.posCompletes[len(ci.posCompletes)-1]
 		ci.SetText(ci.GetText()[0:endPos])
+	}
+	// TODO - if last completion => empty input => exit completion mode
+	//		VERIFY THIS
+	if ci.GetText() == "" {
+		ci.exitCompletionMode()
 	}
 }
 
 func (ci *CompletionInputField) complete() {
-	if !ci.CompletionMode() || ci.completionEnd() || !ci.cursorAtLineEnd() {
+	if !ci.CompletionMode() {
+		panic("method called outside completion mode")
+	}
+	if !ci.cursorAtLineEnd() {
 		return
 	}
 
 	Loop:
-	for i := ci.tokNdx; i < len(ci.toks); i++ {
+	for i := ci.tokNdx(); i < len(ci.toks); i++ {
 		tok := ci.toks[i]
 		switch tok.Type {
 		case utils.TokVar:
 			if ci.cursorPos() > ci.posLastCompletion() {
-				ci.tokNdx = i + 1
 				// TODO: won't I need to treat this also as a completion?
 				ci.posCompletes = append(ci.posCompletes, ci.cursorPos())
 			} else {
@@ -122,7 +128,6 @@ func (ci *CompletionInputField) complete() {
 		case utils.TokLiteral:
 			ci.SetText(ci.GetText() + tok.Lexeme)
 			ci.posCompletes = append(ci.posCompletes, ci.cursorPos())
-			ci.tokNdx = i + 1
 		}
 	}
 }
@@ -149,7 +154,6 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 	for ndx := offset; ndx < fieldWidth; ndx++ {
 		screen.SetContent(x+ndx, y, ' ', nil, fieldStyle)
 	}
-	// print : return (bytes-written, drawnWidth: int)
 
 	previewTok := ci.nextLiteralTok()
 	if previewTok != nil {
@@ -162,7 +166,7 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 }
 
 func (ci *CompletionInputField) nextLiteralTok() *utils.Token {
-	for i := ci.tokNdx; i < len(ci.toks); i++ {
+	for i := ci.tokNdx(); i < len(ci.toks); i++ {
 		tok := ci.toks[i]
 		if tok.Type == utils.TokLiteral {
 			return &tok
@@ -192,20 +196,17 @@ func (ci *CompletionInputField) onBackspace(event *tcell.EventKey) *tcell.EventK
 		// we are at the point of deleting part of the prior block
 		// and there is no input following the cursor.
 
-		var lastTok utils.Token
-		if len(ci.posCompletes) > 0 {
-			lastTok = ci.toks[len(ci.posCompletes)-1]
-		} else {
-			lastTok = ci.toks[0]
-		}
-
-		// prior block is a variable, delete char-by-char
+		lastTok := ci.toks[ci.tokNdx()-1]
+		// the token we are deleting into is a user-provided variable value
+		// => delete char-by-char
 		if lastTok.Type == utils.TokVar {
-			ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
-			ci.tokNdx -= 1
+			// pop the completion value (TODO: I think this is ALWAYS going to be necessary)
+			if cursorPos == ci.posCompletes[ci.tokNdx()] {
+				ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
+			}
 			return event
 		}
-		// prior block is a literal, delete entire segment
+
 		ci.deleteLastCompletion()
 	}
 	return nil
