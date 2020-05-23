@@ -162,7 +162,32 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 			offset + x, y, fieldWidth - offset,
 			tview.AlignLeft, tcell.ColorRed)
 	}
-	// TODO: render variable parts in different color
+
+	fullText := ci.GetText()
+	for i := 0; i <= ci.tokNdx(); i++ {
+		// TODO: kludge. w/o it TAB @ line end crashes program
+		// 		(as we go out of range of ci.toks index)
+		//		In all other scenarios, it is needed
+		if len(ci.toks) == i {
+			break
+		}
+		tok := ci.toks[i]
+		if tok.Type != utils.TokVar {
+			continue
+		}
+		startPos := ci.posCompletes[i]
+		var endPos int
+		if i == len(ci.posCompletes) - 1 {
+			endPos = len(ci.GetText())
+		} else {
+			endPos = ci.posCompletes[i+1]
+		}
+		tview.Print(
+			screen, fullText[startPos:endPos],
+			len(ci.GetLabel()) + x + startPos, y,
+			fieldWidth - len(ci.GetLabel()) - startPos,
+			tview.AlignLeft, tcell.ColorOrange)
+	}
 }
 
 func (ci *CompletionInputField) nextLiteralTok() *utils.Token {
