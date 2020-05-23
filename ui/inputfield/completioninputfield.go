@@ -13,7 +13,6 @@ type CompletionInputField struct {
 	toks            []utils.Token
 	tokNdx          int
 	posCompletes	[]int
-	//posLastComplete int
 	previousText    string
 }
 
