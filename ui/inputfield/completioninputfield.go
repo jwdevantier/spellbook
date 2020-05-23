@@ -85,6 +85,24 @@ func (ci *CompletionInputField) cursorAtLineEnd() bool {
 	return ci.cursorPos() == len(ci.GetText())
 }
 
+func (ci *CompletionInputField) deleteLastCompletion() {
+	// remove last completion and everything following it.
+	switch len(ci.posCompletes) {
+	case 0:
+		return
+	case 1:
+		ci.posCompletes = make([]int, 0)
+		ci.tokNdx = 0
+		ci.SetText("")
+		ci.exitCompletionMode()
+	default:
+		ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
+		ci.tokNdx -= 2
+		endPos := ci.posCompletes[len(ci.posCompletes)-1]
+		ci.SetText(ci.GetText()[0:endPos])
+	}
+}
+
 func (ci *CompletionInputField) complete() {
 	if !ci.CompletionMode() || ci.completionEnd() || !ci.cursorAtLineEnd() {
 		return
@@ -149,6 +167,36 @@ func (ci *CompletionInputField) SetInputCapture(handler func(event *tcell.EventK
 	})
 }
 
+func (ci *CompletionInputField) onBackspace(event *tcell.EventKey) *tcell.EventKey {
+	cursorPos := ci.cursorPos()
+	if cursorPos == 0 {
+		// nothing to delete
+	} else if cursorPos != ci.posLastCompletion() {
+		// deleting some regular character, allow this by bubbling up the event
+		return event
+	} else if ci.cursorAtLineEnd() {
+		// we are at the point of deleting part of the last completion
+		// and there is no input following the cursor.
+		// => allow deletion of the last completion
+
+		var lastTok utils.Token
+		if len(ci.posCompletes) > 0 {
+			lastTok = ci.toks[len(ci.posCompletes)-1]
+		} else {
+			lastTok = ci.toks[0]
+		}
+
+		if lastTok.Type == utils.TokVar {
+			ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
+			ci.tokNdx -= 2
+			return event
+		}
+		ci.deleteLastCompletion()
+	}
+	return nil
+
+}
+
 func (ci *CompletionInputField) defaultInputCapture(event *tcell.EventKey) *tcell.EventKey {
 	switch event.Key() {
 	case tcell.KeyTab:
@@ -161,9 +209,13 @@ func (ci *CompletionInputField) defaultInputCapture(event *tcell.EventKey) *tcel
 			ci.exitCompletionMode()
 			return nil
 		}
-	case tcell.KeyLeft, tcell.KeyBackspace, tcell.KeyBackspace2:
+	case tcell.KeyLeft:
 		if ci.CompletionMode() && ci.cursorPos() == ci.posLastCompletion() {
 			return nil
+		}
+	case tcell.KeyBackspace, tcell.KeyBackspace2:
+		if ci.CompletionMode() {
+			return ci.onBackspace(event)
 		}
 	case tcell.KeyHome, tcell.KeyCtrlA, tcell.KeyCtrlW, tcell.KeyCtrlU:
 		// Disallow any action which moves behind into line
