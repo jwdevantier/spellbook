@@ -14,11 +14,35 @@ type CompletionInputField struct {
 	posCompletes	[]int
 
 	previousText    string
+
+	colorVariables	tcell.Color
+	colorNextCompletion tcell.Color
 }
 
 func NewCompletionInputField() *CompletionInputField {
 	return &CompletionInputField{
-		InputField: tview.NewInputField()}
+		InputField: tview.NewInputField(),
+
+		// default color for variables
+		colorVariables: tcell.ColorOrange,
+		colorNextCompletion: tview.Styles.ContrastSecondaryTextColor,
+	}
+}
+
+func (ci *CompletionInputField) SetVariableColor(color tcell.Color) {
+	ci.colorVariables = color
+}
+
+func (ci *CompletionInputField) GetVariableColor() tcell.Color {
+	return ci.colorVariables
+}
+
+func (ci *CompletionInputField) SetNextCompletionColor(color tcell.Color) {
+	ci.colorNextCompletion = color
+}
+
+func (ci *CompletionInputField) GetNextCompletionColor() tcell.Color {
+	return ci.colorNextCompletion
 }
 
 func (ci *CompletionInputField) tokNdx() int {
@@ -146,23 +170,19 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 	if fieldWidth == 0 { // extend as much as possible
 		fieldWidth = width
 	}
-	fieldStyle := tcell.StyleDefault.Background(tcell.ColorGreen)
 
+	// Show text inserted next time TAB (auto-complete) is used
 	// start drawing AFTER given input
 	offset := len(ci.GetLabel()) + len(ci.GetText())
-
-	for ndx := offset; ndx < fieldWidth; ndx++ {
-		screen.SetContent(x+ndx, y, ' ', nil, fieldStyle)
-	}
-
 	previewTok := ci.nextLiteralTok()
 	if previewTok != nil {
 		tview.Print(
 			screen, previewTok.Lexeme,
 			offset + x, y, fieldWidth - offset,
-			tview.AlignLeft, tcell.ColorRed)
+			tview.AlignLeft, ci.colorNextCompletion)
 	}
 
+	// Draw variable segments of command with a different color
 	fullText := ci.GetText()
 	for i := 0; i <= ci.tokNdx(); i++ {
 		// TODO: kludge. w/o it TAB @ line end crashes program
@@ -186,7 +206,7 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 			screen, fullText[startPos:endPos],
 			len(ci.GetLabel()) + x + startPos, y,
 			fieldWidth - len(ci.GetLabel()) - startPos,
-			tview.AlignLeft, tcell.ColorOrange)
+			tview.AlignLeft, ci.colorVariables)
 	}
 }
 
