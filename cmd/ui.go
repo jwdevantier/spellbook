@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/gdamore/tcell"
 	"github.com/jwdevantier/spellbook/ui/suggestions"
 	table2 "github.com/jwdevantier/spellbook/ui/table"
@@ -169,6 +170,41 @@ func NewInputField() *MyInputField {
 	return inputField
 }
 
+func (mi *MyInputField) SetInputCapture(handler func(event *tcell.EventKey) *tcell.EventKey) {
+	mi.InputField.SetInputCapture(func (event *tcell.EventKey) *tcell.EventKey {
+		out := mi.defaultInputCapture(event)
+		if out == nil {
+			return nil
+		}
+		return handler(out)
+	})
+}
+
+func (mi *MyInputField) defaultInputCapture(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyTab:
+		if mi.completionMode() {
+			mi.complete()
+			return nil
+		}
+	case tcell.KeyEscape:
+		if mi.completionMode() {
+			mi.exitCompletionMode()
+			return nil
+		}
+	case tcell.KeyLeft, tcell.KeyBackspace, tcell.KeyBackspace2:
+		if mi.completionMode() && mi.cursorPos() == mi.posLastCompletion() {
+			return nil
+		}
+	case tcell.KeyHome, tcell.KeyCtrlA, tcell.KeyCtrlW, tcell.KeyCtrlU:
+		// Disallow any action which moves behind into line
+		if mi.completionMode() {
+			return nil
+		}
+	}
+	return event
+}
+
 func NewTextView(label string) *tview.TextView {
 	text := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
@@ -204,70 +240,48 @@ var uiCmd = &cobra.Command{
 		rootGrid.AddItem(NewTextView("Header"), 0, 0, 1, 1, 0, 0, false)
 
 		inputField := NewInputField()
-		//inputField.SetDoneFunc(func(key tcell.Key) {
-		//	if key == tcell.KeyEnter {
-		//		row, found := table.GetSelectedRow()
-		//		if !found {
-		//			return
-		//		}
-		//		app.Stop()
-		//		toks := row.(*suggestions.CommandRow).Command().Cmd
-		//		fmt.Printf("$ %s\n", toks)
-		//		// TODO: uncomment to run
-		//		//utils.Run(toks)
-		//	} else if key == tcell.KeyEscape {
-		//		app.Stop()
-		//	}
-		//})
+
 		inputField.SetChangedFunc(func(text string) {
 			fuzzy.SetSearchString(text)
 			table.Render()
 		})
+
 		inputField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			switch event.Key() {
 			case tcell.KeyUp:
-				if ! inputField.completionMode() {
+				if !inputField.completionMode() {
 					table.SelectionUp()
-				}
-				return nil
-			case tcell.KeyDown:
-				if ! inputField.completionMode() {
-					table.SelectionDown()
-				}
-				return nil
-			case tcell.KeyTab:
-				if inputField.completionMode() {
-					inputField.complete()
 					return nil
 				}
+			case tcell.KeyDown:
+				if !inputField.completionMode() {
+					table.SelectionDown()
+					return nil
+				}
+			case tcell.KeyTab:
 				row, found := table.GetSelectedRow()
 				if found {
-					inputField.enterCompletionMode(row.(*suggestions.CommandRow).Command().Cmd)
+					// TODO: handle error here..?
+					_ = inputField.enterCompletionMode(row.(*suggestions.CommandRow).Command().Cmd)
 				}
 				return nil
 			case tcell.KeyEscape:
-				if inputField.completionMode() {
-					inputField.exitCompletionMode()
-				} else {
-					app.Stop()
-				}
+				app.Stop()
 				return nil
-			case tcell.KeyLeft, tcell.KeyBackspace, tcell.KeyBackspace2:
-				if inputField.completionMode() && inputField.cursorPos() == inputField.posLastCompletion() {
+			case tcell.KeyEnter:
+				row, found := table.GetSelectedRow()
+				if !found {
 					return nil
 				}
-			case tcell.KeyHome, tcell.KeyCtrlA, tcell.KeyCtrlW, tcell.KeyCtrlU:
-				// Disallow any action which moves behind into line
-				if inputField.completionMode() {
-					return nil
-				}
+				app.Stop()
+				toks := row.(*suggestions.CommandRow).Command().Cmd
+				fmt.Printf("toks: %v\n", toks)
+				//utils.Run(toks)
+				return nil
 			}
 			return event
 		})
 
-		table.SetOnTab(func() {
-			app.SetFocus(inputField)
-		})
 		rootGrid.AddItem(inputField, 2, 0, 1, 1, 0, 0, true)
 		rootGrid.AddItem(table.Primitive(), 1, 0, 1, 1, 0, 0, true)
 
