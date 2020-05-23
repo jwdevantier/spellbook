@@ -21,9 +21,15 @@ func Run(cmd string) error {
 	return c.Run()
 }
 
-type ParseCmdResult struct {
-	Strings []string
-	VarIndices []int
+type TokType uint8
+const (
+	TokLiteral = iota
+	TokVar
+)
+
+type Token struct {
+	Type TokType
+	Lexeme string
 }
 
 type InvalidVarNameError struct {
@@ -41,15 +47,14 @@ func NewInvalidVarNameError(cmd string, varName string) *InvalidVarNameError {
 	}
 }
 
-func ParseCmd(cmd string) (*ParseCmdResult, error) {
-	strs := make([]string, 0)
-	vars := make([]int, 0)
+func ParseCmd(cmd string) ([]Token, error) {
+	toks := make([]Token, 0)
 
 	buf := make([]byte, 0)
 
-	emitBuf := func() {
+	emitBuf := func(typ TokType) {
 		if len(buf) != 0 {
-			strs = append(strs, string(buf))
+			toks = append(toks, Token{typ, string(buf)})
 			buf = make([]byte, 0)
 		}
 	}
@@ -61,7 +66,7 @@ func ParseCmd(cmd string) (*ParseCmdResult, error) {
 		if off == -1 || pos + off == len(cmd) - 1 {
 			// the end of the string is reached. Treat rest as a literal
 			buf = append(buf, cmd[start:]...)
-			emitBuf()
+			emitBuf(TokLiteral)
 			break
 		}
 		pos += off
@@ -87,12 +92,12 @@ func ParseCmd(cmd string) (*ParseCmdResult, error) {
 		} else if off == -1 {
 			// the end of the string is reached
 			buf = append(buf, cmd[start:]...)
-			emitBuf()
+			emitBuf(TokLiteral)
 			break
 		}
 
 		buf = append(buf, cmd[start:pos]...) // up to first '%'
-		emitBuf()
+		emitBuf(TokLiteral)
 
 		// skip '%('
 		start = pos + 2
@@ -107,13 +112,9 @@ func ParseCmd(cmd string) (*ParseCmdResult, error) {
 			}
 		}
 		buf = append(buf, ident...)
-		vars = append(vars, len(strs))
-		emitBuf()
+		emitBuf(TokVar)
 		pos += 1
 		start = pos
 	}
-	return &ParseCmdResult{
-		Strings: strs,
-		VarIndices: vars,
-	}, nil
+	return toks, nil
 }
