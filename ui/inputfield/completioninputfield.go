@@ -96,7 +96,7 @@ func (ci *CompletionInputField) deleteLastCompletion() {
 		ci.exitCompletionMode()
 	default:
 		ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
-		ci.tokNdx -= 2
+		ci.tokNdx -= 1
 		endPos := ci.posCompletes[len(ci.posCompletes)-1]
 		ci.SetText(ci.GetText()[0:endPos])
 	}
@@ -150,10 +150,25 @@ func (ci *CompletionInputField) Draw(screen tcell.Screen) {
 		screen.SetContent(x+ndx, y, ' ', nil, fieldStyle)
 	}
 	// print : return (bytes-written, drawnWidth: int)
-	tview.Print(screen, "hello, world", offset + x, y, fieldWidth - offset, tview.AlignLeft, tcell.ColorRed)
 
-	// TODO: Render auto-complete text.
+	previewTok := ci.nextLiteralTok()
+	if previewTok != nil {
+		tview.Print(
+			screen, previewTok.Lexeme,
+			offset + x, y, fieldWidth - offset,
+			tview.AlignLeft, tcell.ColorRed)
+	}
+	// TODO: render variable parts in different color
+}
 
+func (ci *CompletionInputField) nextLiteralTok() *utils.Token {
+	for i := ci.tokNdx; i < len(ci.toks); i++ {
+		tok := ci.toks[i]
+		if tok.Type == utils.TokLiteral {
+			return &tok
+		}
+	}
+	return nil
 }
 
 func (ci *CompletionInputField) SetInputCapture(handler func(event *tcell.EventKey) *tcell.EventKey) {
@@ -174,9 +189,8 @@ func (ci *CompletionInputField) onBackspace(event *tcell.EventKey) *tcell.EventK
 		// deleting some regular character, allow this by bubbling up the event
 		return event
 	} else if ci.cursorAtLineEnd() {
-		// we are at the point of deleting part of the last completion
+		// we are at the point of deleting part of the prior block
 		// and there is no input following the cursor.
-		// => allow deletion of the last completion
 
 		var lastTok utils.Token
 		if len(ci.posCompletes) > 0 {
@@ -185,15 +199,16 @@ func (ci *CompletionInputField) onBackspace(event *tcell.EventKey) *tcell.EventK
 			lastTok = ci.toks[0]
 		}
 
+		// prior block is a variable, delete char-by-char
 		if lastTok.Type == utils.TokVar {
 			ci.posCompletes = ci.posCompletes[:len(ci.posCompletes)-1]
-			ci.tokNdx -= 2
+			ci.tokNdx -= 1
 			return event
 		}
+		// prior block is a literal, delete entire segment
 		ci.deleteLastCompletion()
 	}
 	return nil
-
 }
 
 func (ci *CompletionInputField) defaultInputCapture(event *tcell.EventKey) *tcell.EventKey {
