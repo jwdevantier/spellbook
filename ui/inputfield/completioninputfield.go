@@ -81,31 +81,32 @@ func (ci *CompletionInputField) completionEnd() bool {
 	return ci.tokNdx == -1
 }
 
-func (ci *CompletionInputField) cursorAtEnd() bool {
+func (ci *CompletionInputField) cursorAtLineEnd() bool {
 	return ci.cursorPos() == len(ci.GetText())
 }
 
 func (ci *CompletionInputField) complete() {
-	if !ci.CompletionMode() || ci.completionEnd() || !ci.cursorAtEnd() {
+	if !ci.CompletionMode() || ci.completionEnd() || !ci.cursorAtLineEnd() {
 		return
 	}
 
+	Loop:
 	for i := ci.tokNdx; i < len(ci.toks); i++ {
 		tok := ci.toks[i]
-		if tok.Type != utils.TokVar {
-			ci.SetText(ci.GetText() +  tok.Lexeme)
+		switch tok.Type {
+		case utils.TokVar:
+			if ci.cursorPos() > ci.posLastCompletion() {
+				ci.tokNdx = i + 1
+				// TODO: won't I need to treat this also as a completion?
+				ci.posCompletes = append(ci.posCompletes, ci.cursorPos())
+			} else {
+				break Loop
+			}
+		case utils.TokLiteral:
+			ci.SetText(ci.GetText() + tok.Lexeme)
 			ci.posCompletes = append(ci.posCompletes, ci.cursorPos())
-			continue
+			ci.tokNdx = i + 1
 		}
-		ci.tokNdx = i // record that we're at a variable position
-		if ci.cursorPos() <= ci.posLastCompletion() {
-			// if user hasn't provided any input for the var, refuse expansion
-			break
-		}
-	}
-	if ci.tokNdx == len(ci.toks) {
-		// TODO: NEVER hit (for cmds ending w var token, at least)
-		ci.tokNdx = -1 // nothing more to auto-complete
 	}
 }
 
