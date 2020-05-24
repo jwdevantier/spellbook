@@ -1,0 +1,13 @@
+commands:
+  - cmd: ssh-keygen -t rsa -b 4096 -C "%(comment)" -f $HOME/.ssh/%(keyname)
+    desc: create SSH key
+  - cmd: git log --graph --decorate --oneline
+    desc: visualize branches
+  - cmd: git stash apply stash@{%(n)}
+    desc: apply stash N
+  - cmd: git %(commit)~ %(commit)
+    desc: show changes in commit
+  - cmd: git log --pretty=oneline
+    desc: log on one line
+  - cmd: git push origin --delete %(tag)
+    desc: delete remote tag
