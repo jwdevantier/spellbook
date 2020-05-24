@@ -220,6 +220,17 @@ func (ci *CompletionInputField) nextLiteralTok() *utils.Token {
 	return nil
 }
 
+func (ci *CompletionInputField) CompletionDone() bool {
+	if !(len(ci.posCompletes) >= len(ci.toks)) {
+		// not at last completion
+		return false
+	} else if ci.toks[len(ci.toks)-1].Type == utils.TokVar && len(ci.GetText()) == ci.posLastCompletion() {
+		// at last completion, which is a var, but no input received yet
+		return false
+	}
+	return true
+}
+
 func (ci *CompletionInputField) SetInputCapture(handler func(event *tcell.EventKey) *tcell.EventKey) {
 	ci.InputField.SetInputCapture(func (event *tcell.EventKey) *tcell.EventKey {
 		out := ci.defaultInputCapture(event)

@@ -6,6 +6,7 @@ import (
 	"github.com/jwdevantier/spellbook/ui/inputfield"
 	"github.com/jwdevantier/spellbook/ui/suggestions"
 	table2 "github.com/jwdevantier/spellbook/ui/table"
+	"github.com/jwdevantier/spellbook/utils"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
 )
@@ -101,15 +102,22 @@ var uiCmd = &cobra.Command{
 				app.Stop()
 				return nil
 			case tcell.KeyEnter:
-				row, found := table.GetSelectedRow()
-				if !found {
+				if !inputField.CompletionMode() {
+					// not in completion mode, enter it
+					row, found := table.GetSelectedRow()
+					if found {
+						// TODO: handle error here..?
+						_ = inputField.EnterCompletionMode(row.(*suggestions.CommandRow).Command().Cmd)
+					}
+					return nil
+				} else if inputField.CompletionDone() {
+					app.Stop()
+					cmd := inputField.GetText()
+					fmt.Printf("$ %s\n", cmd)
+					// TODO: expand env vars - error out if any var is undefined(?)
+					utils.Run(cmd)
 					return nil
 				}
-				app.Stop()
-				toks := row.(*suggestions.CommandRow).Command().Cmd
-				fmt.Printf("toks: %v\n", toks)
-				//utils.Run(toks)
-				return nil
 			}
 			return event
 		})
