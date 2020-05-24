@@ -70,6 +70,7 @@ var uiCmd = &cobra.Command{
 			SetRows(1, -1, 1). // height of each row
 			SetColumns(0).
 			SetBorders(true)
+		rootGrid.SetBackgroundColor(tcell.ColorBlack)
 
 		rootGrid.AddItem(NewTextView("Header"), 0, 0, 1, 1, 0, 0, false)
 
