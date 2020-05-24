@@ -41,6 +41,29 @@ func ExitCode(err error) int {
 	return -1
 }
 
+type MissingEnvVarsError struct {
+	Missing []string
+}
+
+func (e *MissingEnvVarsError) Error() string {
+	return fmt.Sprintf("Referenced environment variables are not defined: %s", strings.Join(e.Missing, ", "))
+}
+
+func ResolveEnvVars(s string) (string, error) {
+	missing := make([]string, 0)
+	resolved := os.Expand(s, func(key string) string {
+		val, found := os.LookupEnv(key)
+		if !found {
+			missing = append(missing, key)
+		}
+		return val // "" (if undefined) or value
+	})
+	if len(missing) != 0 {
+		return "", &MissingEnvVarsError{Missing: missing}
+	}
+	return resolved, nil
+}
+
 type TokType uint8
 const (
 	TokLiteral = iota

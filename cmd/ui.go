@@ -113,9 +113,14 @@ var uiCmd = &cobra.Command{
 					return nil
 				} else if inputField.CompletionDone() {
 					app.Stop()
-					cmd := inputField.GetText()
+					rawCmd := inputField.GetText()
+					cmd, err := utils.ResolveEnvVars(rawCmd)
+					if err != nil {
+						fmt.Printf("$ %s\n", rawCmd)
+						fmt.Println(err)
+						return nil
+					}
 					fmt.Printf("$ %s\n", cmd)
-					// TODO: expand env vars - error out if any var is undefined(?)
 					os.Exit(utils.ExitCode(utils.Run(cmd)))
 					return nil
 				}
