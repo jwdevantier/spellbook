@@ -31,11 +31,7 @@ func initConfig() {
 var rootCmd = &cobra.Command{
 	Use: "spellbook",
 	Short: "Easy access to your best shell commands",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Main command run....")
-		_ = cmd.Help()
-
-	},
+	Run: uiCmd.Run,
 }
 
 // Execute executes the CLI interface
