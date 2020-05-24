@@ -76,8 +76,10 @@ var uiCmd = &cobra.Command{
 		inputField := NewInputField()
 
 		inputField.SetChangedFunc(func(text string) {
-			fuzzy.SetSearchString(text)
-			table.Render()
+			if !inputField.CompletionMode() {
+				fuzzy.SetSearchString(text)
+				table.Render()
+			}
 		})
 
 		inputField.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
