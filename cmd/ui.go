@@ -115,6 +115,9 @@ var uiCmd = &cobra.Command{
 					return nil
 				} else if inputField.CompletionDone() {
 					app.Stop()
+					// Required because of some bug in tcell when cleaning up the screen.
+					utils.PressEnterKey()
+
 					rawCmd := inputField.GetText()
 					cmd, err := utils.ResolveEnvVars(rawCmd)
 					if err != nil {
