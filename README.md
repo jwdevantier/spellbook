@@ -38,9 +38,4 @@ You can also create a `.spellbook.yml` for commands which should only be shown w
 
 **WIP** Still outstanding changes to be made.
 
-* for now, type `spellbook ui` to open the gui
-    * (Later this will show automatically)
-* Propagate program exit code
-* Auto-expand OS environment variables in commands
-* Stop updating table view when in AC-mode.
 * Remove "HEADER" - possibly show program status and hints
