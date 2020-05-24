@@ -143,7 +143,12 @@ func (ci *CompletionInputField) complete() {
 		tok := ci.toks[i]
 		switch tok.Type {
 		case utils.TokVar:
-			if ci.cursorPos() > ci.posLastCompletion() {
+			// true iff 1+ characters have been written in place of the variable
+			varHasInput := ci.cursorPos() > ci.posLastCompletion()
+			// true iff this variable block is not the last bit of the command
+			// (if it is, do not close/end it - all input from here on out belongs to the var)
+			notLastToken := len(ci.posCompletes) < len(ci.toks)
+			if varHasInput && notLastToken {
 				// TODO: won't I need to treat this also as a completion?
 				ci.posCompletes = append(ci.posCompletes, ci.cursorPos())
 			} else {
