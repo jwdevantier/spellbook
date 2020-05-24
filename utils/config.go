@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/c-bata/go-prompt"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
@@ -25,22 +24,6 @@ type Command struct {
 
 type Config struct {
 	Commands []Command
-}
-
-func(c *Config) SuggestByDescriptions() []prompt.Suggest {
-	res := make([]prompt.Suggest, len(c.Commands))
-	for i, cmd := range c.Commands {
-		res[i] = prompt.Suggest{Text: cmd.Desc, Description: cmd.Cmd}
-	}
-	return res
-}
-
-func(c *Config) SuggestByCommands() []prompt.Suggest {
-	res := make([]prompt.Suggest, len(c.Commands))
-	for i, cmd := range c.Commands {
-		res[i] = prompt.Suggest{Text: cmd.Cmd, Description: cmd.Desc}
-	}
-	return res
 }
 
 func (c *Config) merge(other *Config) error {
