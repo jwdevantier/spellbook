@@ -21,6 +21,26 @@ func Run(cmd string) error {
 	return c.Run()
 }
 
+// ExitCode returns the program exit code (if any)
+// -1: (probably) ignore - most commands set error-codes between 0-255
+// 0: the command exited successfully
+// 0-255: program exit code
+func ExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+
+	if e, ok := err.(*exec.ExitError); ok {
+		return e.ExitCode()
+	}
+
+	// Negative exit codes are technically allowed by POSIX
+	// but e.g. the wait-family of system calls truncates value to
+	// be an unsigned 1B (0-255) val are supported.
+	// Hence most well-behaved programs limit exit codes to this range.
+	return -1
+}
+
 type TokType uint8
 const (
 	TokLiteral = iota

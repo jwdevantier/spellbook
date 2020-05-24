@@ -9,6 +9,7 @@ import (
 	"github.com/jwdevantier/spellbook/utils"
 	"github.com/rivo/tview"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 func initStyle() {
@@ -115,7 +116,7 @@ var uiCmd = &cobra.Command{
 					cmd := inputField.GetText()
 					fmt.Printf("$ %s\n", cmd)
 					// TODO: expand env vars - error out if any var is undefined(?)
-					utils.Run(cmd)
+					os.Exit(utils.ExitCode(utils.Run(cmd)))
 					return nil
 				}
 			}
