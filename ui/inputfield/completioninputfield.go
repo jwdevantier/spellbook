@@ -2,6 +2,7 @@ package inputfield
 
 import (
 	"github.com/gdamore/tcell"
+	"github.com/jwdevantier/spellbook/ui"
 	"github.com/jwdevantier/spellbook/utils"
 	"github.com/rivo/tview"
 	"reflect"
@@ -300,4 +301,20 @@ func (ci *CompletionInputField) defaultInputCapture(event *tcell.EventKey) *tcel
 		}
 	}
 	return event
+}
+
+func (ci *CompletionInputField) Style(theme *ui.Base16Theme) {
+	ci.SetBackgroundColor(theme.Background)
+
+	ci.SetTitleColor(theme.Foreground)
+	ci.SetLabelColor(theme.BrightMagenta)
+
+	ci.SetPlaceholderTextColor(theme.BrightCyan)
+	ci.SetNextCompletionColor(theme.BrightCyan)
+
+	ci.SetVariableColor(theme.BrightGreen)
+	ci.SetFieldBackgroundColor(theme.BrightBlack)
+	ci.SetFieldTextColor(theme.White)
+
+	ci.SetBorderColor(theme.Cyan)
 }

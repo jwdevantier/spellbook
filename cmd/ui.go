@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/gdamore/tcell"
+	"github.com/jwdevantier/spellbook/ui"
 	"github.com/jwdevantier/spellbook/ui/inputfield"
 	"github.com/jwdevantier/spellbook/ui/suggestions"
 	table2 "github.com/jwdevantier/spellbook/ui/table"
@@ -11,6 +12,30 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 )
+
+var STYLE = &ui.Base16Theme{
+	Background: tcell.ColorDarkSlateGrey,
+	Foreground: tcell.ColorLightGray,
+
+	Black: tcell.ColorDarkSlateGrey,
+	BrightBlack: tcell.ColorSlateGray,
+
+	Red: tcell.ColorRed,
+	Green: tcell.ColorGreen,
+	Yellow: tcell.ColorYellow,
+	Blue: tcell.ColorBlue,
+	Magenta: tcell.ColorDarkMagenta,
+	Cyan: tcell.ColorDarkCyan,
+	White: tcell.ColorLightGray,
+
+	BrightRed: tcell.ColorOrangeRed,
+	BrightGreen: tcell.ColorGreenYellow,
+	BrightYellow: tcell.ColorLightYellow,
+	BrightBlue: tcell.ColorLightBlue,
+	BrightMagenta: tcell.ColorHotPink,
+	BrightCyan: tcell.ColorLightCyan,
+	BrightWhite: tcell.ColorWhite,
+}
 
 func initStyle() {
 	// go to def on tcell.ColorWhite
@@ -44,6 +69,7 @@ func NewTextView(label string) *tview.TextView {
 	text := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
 		SetText(label)
+	STYLE.StyleTextView(text)
 	return text
 }
 
@@ -56,6 +82,7 @@ var uiCmd = &cobra.Command{
 		tableModel := table2.NewTableModel(suggestions.ToRowsCommands(Config.Commands))
 		renderer := suggestions.NewCommandRenderer()
 		table := table2.NewTable(tableModel, renderer)
+		table.Style(STYLE)
 		fuzzy := suggestions.NewCommandFuzzyFilter()
 		table.SetFilter(fuzzy)
 		table.SetOnSelected(func(cell *tview.TableCell) {
@@ -70,11 +97,12 @@ var uiCmd = &cobra.Command{
 			SetRows(1, -1, 1). // height of each row
 			SetColumns(0).
 			SetBorders(true)
-		rootGrid.SetBackgroundColor(tcell.ColorBlack)
+		STYLE.StyleGrid(rootGrid)
 
 		rootGrid.AddItem(NewTextView("Header"), 0, 0, 1, 1, 0, 0, false)
 
 		inputField := NewInputField()
+		inputField.Style(STYLE)
 
 		inputField.SetChangedFunc(func(text string) {
 			if !inputField.CompletionMode() {

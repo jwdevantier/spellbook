@@ -2,6 +2,7 @@ package table
 
 import (
 	"github.com/gdamore/tcell"
+	"github.com/jwdevantier/spellbook/ui"
 	"github.com/rivo/tview"
 )
 
@@ -170,6 +171,12 @@ func (t *Table) GetSelectedRow() (Row, bool) {
 		return nil, false
 	}
 	return t.model.LookUp(t.rowIndex[r])
+}
+
+func (t *Table) Style(theme *ui.Base16Theme) {
+	t.SetBackgroundColor(theme.Background)
+	t.SetBordersColor(theme.Cyan)
+	t.Render()
 }
 
 
